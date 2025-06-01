@@ -1,0 +1,19 @@
+/* Tailwind setup */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------- Global styling -------------- */
+body {
+  /* center the game canvas */
+  @apply min-h-screen flex items-center justify-center text-white;
+
+  /* fallback colour */
+  background-color: #1a202c;
+
+  /* sunrise gradient image (lives in src/assets/) */
+  background-image: url("./assets/bg.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
