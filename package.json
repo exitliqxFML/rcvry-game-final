@@ -2,28 +2,48 @@
   "name": "rcvry-game-final",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "@solana/wallet-adapter-phantom": "^0.9.27",
-    "@solana/wallet-adapter-react": "^0.15.38",
-    "@solana/wallet-adapter-react-ui": "^0.9.38",
-    "@solana/wallet-adapter-wallets": "^0.19.36",
-    "@solana/web3.js": "^1.98.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.21",
-    "tailwindcss": "^3.3.2"
-  },
+
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test":  "react-app-rewired test",
     "eject": "react-scripts eject"
   },
+
+  "dependencies": {
+    "@solana/web3.js": "^1.98.2",
+    "@solana/wallet-adapter-react": "^0.10.3",
+    "@solana/wallet-adapter-react-ui": "^0.10.3",
+    "@solana/wallet-adapter-wallets": "^0.11.17",
+    "@solana/wallet-adapter-backpack": "^0.1.14",
+    "@solana/wallet-adapter-glow": "^0.1.18",
+    "@solana/wallet-adapter-solflare": "^0.4.22",
+
+    "framer-motion": "^10.18.1",
+    "lucide-react": "^0.379.0",
+
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+
+  "devDependencies": {
+    "react-app-rewired": "^2.2.1",
+
+    "crypto-browserify": "^3.12.0",
+    "stream-browserify": "^3.0.0",
+    "assert": "^2.1.0",
+    "buffer": "^6.0.3",
+    "util": "^0.12.5",
+    "process": "^0.11.10",
+    "path-browserify": "^1.0.1",
+    "stream-http": "^3.2.0",
+    "https-browserify": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "browserify-zlib": "^0.2.0",
+    "node-polyfill-webpack-plugin": "^2.0.1"
+  },
+
   "browserslist": {
     "production": [
       ">0.2%",
