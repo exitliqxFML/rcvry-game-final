@@ -1,6 +1,1 @@
-# .gitignore
 node_modules/
-.env
-.DS_Store
-echo node_modules/ > .gitignore
-echo .env >> .gitignore
