@@ -1,174 +1,148 @@
-// src/RunnerGame.js
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
-/* ---------- constants ---------- */
-const GRAVITY     = 0.6;
-const JUMP_VEL    = -12;
-const DUCK_TIME   = 600;           // ms
-const GROUND_LINE = 230;           // y-coord of ground
-const BASE_SPEED  = 4;
-const SPEED_STEP  = 1;
-const STOP_Y      = 155;           // final Y for falling top obstacle
+import playerPng       from "./assets/player.png";
+import obstaclePng     from "./assets/obstacle.png";
+import obstacleTopPng  from "./assets/obstacleTop.png";
 
-export default function RunnerGame({ onGameOver }) {
-  /* ---------- refs & state ---------- */
+const CANVAS_W = 800;
+const CANVAS_H = 300;
+const GROUND_Y  = 240;
+
+const PLAYER_W  = 48;
+const PLAYER_H  = 48;
+const DUCK_H    = 32;
+
+const GRAVITY   = 0.55;
+const JUMP_VEL  = -11;
+
+export default function RunnerGame() {
   const canvasRef = useRef(null);
+  const [ready, setReady] = useState(false);
 
-  const player = useRef({
-    h: 30,
-    w: 30,
-    x: 60,
-    y: GROUND_LINE - 30, // top-edge so feet touch ground
-    vy: 0,
-    jumping: false,
-    ducking: false,
+  // one Image() object per sprite
+  const images = useRef({
+    player      : new Image(),
+    obstacle    : new Image(),
+    obstacleTop : new Image(),
   });
 
-  const obstacle = useRef({
-    lane: "bottom",
-    x: 400,
-    y: 0,
-    w: 20,
-    h: 40,
-    speedX: BASE_SPEED,
-    speedY: 0,
-    active: false,
-  });
-
-  const [score, setScore] = useState(0);
-
-  /* ---------- sprites ---------- */
-  const playerImg = useMemo(() => { const i = new Image(); i.src = "/player.png"; return i; }, []);
-  const botImg    = useMemo(() => { const i = new Image(); i.src = "/obstacle.png";    return i; }, []);
-  const topImg    = useMemo(() => { const i = new Image(); i.src = "/obstacleTop.png"; return i; }, []);
-
-  /* ---------- spawn helper ---------- */
-  const spawnObstacle = () => {
-    const topLane = Math.random() < 0.5;
-    obstacle.current.lane   = topLane ? "top" : "bottom";
-    obstacle.current.x      = 400;
-    obstacle.current.speedX = BASE_SPEED + SPEED_STEP * Math.floor(score / 5);
-
-    if (topLane) {
-      obstacle.current.y      = 10;
-      obstacle.current.h      = 50;
-      obstacle.current.speedY = 2.5 + 0.2 * Math.floor(score / 5);
-    } else {
-      const h = Math.floor(Math.random() * 40) + 20;
-      obstacle.current.h      = h;
-      obstacle.current.y      = GROUND_LINE - h;
-      obstacle.current.speedY = 0;
-    }
-    obstacle.current.active = true;
-  };
-
-  /* ---------- controls ---------- */
+  /* ---------- preload PNGs ---------- */
   useEffect(() => {
-    const onKey = (e) => {
-      const p = player.current;
+    images.current.player.src      = playerPng;
+    images.current.obstacle.src    = obstaclePng;
+    images.current.obstacleTop.src = obstacleTopPng;
 
-      /* jump */
-      if ((e.code === "Space" || e.code === "ArrowUp") && !p.jumping && !p.ducking) {
-        p.vy = JUMP_VEL;
-        p.jumping = true;
-      }
-
-      /* duck */
-      if (e.code === "ArrowDown" && !p.jumping && !p.ducking) {
-        p.ducking = true;
-        const originalH = p.h;
-        p.h = 15;
-        p.y = GROUND_LINE - p.h;        // keep feet level
-        setTimeout(() => {
-          p.h = originalH;
-          p.y = GROUND_LINE - p.h;      // restore standing position
-          p.ducking = false;
-        }, DUCK_TIME);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    Promise.all(
+      Object.values(images.current).map(
+        img => new Promise(res => (img.complete ? res() : (img.onload = res)))
+      )
+    ).then(() => setReady(true));
   }, []);
 
   /* ---------- game loop ---------- */
   useEffect(() => {
-    spawnObstacle();
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    let req;
+    if (!ready) return;
 
-    const loop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvasRef.current.getContext("2d");
 
-      /* player physics */
-      const p = player.current;
-      p.vy += GRAVITY;
-      p.y  += p.vy;
-      const floorY = GROUND_LINE - p.h;
-      if (p.y >= floorY) {
-        p.y = floorY;
-        p.vy = 0;
-        p.jumping = false;
+    let frame = 0;
+    let playerY = GROUND_Y - PLAYER_H;
+    let velY    = 0;
+    let ducking = false;
+
+    const obstacles = [];
+
+    /** spawn a top or bottom obstacle */
+    function spawn() {
+      const top = Math.random() < 0.4;
+      obstacles.push({
+        x   : CANVAS_W,
+        y   : top ? 40 : GROUND_Y - images.current.obstacle.height,
+        w   : images.current.obstacle.width,
+        h   : images.current.obstacle.height,
+        top,
+      });
+    }
+
+    /* ------- input handlers ------- */
+    function keyDown(e) {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        if (playerY >= GROUND_Y - PLAYER_H && !ducking) velY = JUMP_VEL;
+      } else if (e.code === "ArrowDown") {
+        ducking = true;
+      }
+    }
+    function keyUp(e) {
+      if (e.code === "ArrowDown") ducking = false;
+    }
+    window.addEventListener("keydown", keyDown);
+    window.addEventListener("keyup",   keyUp);
+
+    /* ------- main loop ------- */
+    let rafId;
+    function loop() {
+      /* physics */
+      velY += GRAVITY;
+      playerY += velY;
+      if (playerY > GROUND_Y - PLAYER_H) {
+        playerY = GROUND_Y - PLAYER_H;
+        velY = 0;
       }
 
-      /* obstacle motion */
-      const o = obstacle.current;
-      if (o.active) {
-        o.x -= o.speedX;
-        if (o.lane === "top" && o.y < STOP_Y) {
-          o.y += o.speedY;
-          if (o.y > STOP_Y) o.y = STOP_Y;
-        }
-        if (o.x + o.w < 0) {
-          o.active = false;
-          setScore((s) => s + 1);
-        }
-      } else {
-        spawnObstacle();
-      }
+      /* spawn every 90 frames */
+      if (frame % 90 === 0) spawn();
 
-      /* collision */
-      const hit =
-        p.x < o.x + o.w &&
-        p.x + p.w > o.x &&
-        p.y < o.y + o.h &&
-        p.y + p.h > o.y;
-
-      if (hit) {
-        cancelAnimationFrame(req);
-        onGameOver(score);
-        return;
-      }
+      /* move obstacles */
+      obstacles.forEach(o => (o.x -= 6));
+      if (obstacles.length && obstacles[0].x + obstacles[0].w < 0) obstacles.shift();
 
       /* draw */
-      // ground line
-      ctx.fillStyle = "#2d3748";
-      ctx.fillRect(0, GROUND_LINE, 400, 5);
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-      // obstacle sprite
-      ctx.drawImage(o.lane === "bottom" ? botImg : topImg, o.x, o.y, o.w, o.h);
+      // ground
+      ctx.fillStyle = "#5ec5c4";
+      ctx.fillRect(0, GROUND_Y, CANVAS_W, 2);
 
-      // player sprite
-      ctx.drawImage(playerImg, p.x, p.y, p.w, p.h);
+      // player
+      const pImg = images.current.player;
+      const pH   = ducking ? DUCK_H : PLAYER_H;
+      ctx.drawImage(pImg, 0, 0, pImg.width, pImg.height, 80, playerY + (PLAYER_H - pH), PLAYER_W, pH);
 
-      req = requestAnimationFrame(loop);
+      // obstacles & collision
+      obstacles.forEach(o => {
+        const img = o.top ? images.current.obstacleTop : images.current.obstacle;
+        ctx.drawImage(img, o.x, o.y);
+
+        const hit =
+          80 + PLAYER_W > o.x &&
+          80 < o.x + o.w &&
+          playerY + pH > o.y &&
+          playerY < o.y + o.h;
+
+        if (hit) {
+          cancelAnimationFrame(rafId);
+          alert("Game over 😬");
+        }
+      });
+
+      frame++;
+      rafId = requestAnimationFrame(loop);
+    }
+    rafId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("keydown", keyDown);
+      window.removeEventListener("keyup",   keyUp);
     };
+  }, [ready]);
 
-    req = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(req);
-  }, [score, playerImg, botImg, topImg, onGameOver]);
-
-  /* ---------- UI ---------- */
   return (
-    <div className="flex flex-col items-center gap-2">
-      <h2 className="text-xl font-semibold">Score {score}</h2>
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={250}
-        className="game-canvas bg-gray-900/70 rounded-lg shadow-xl"
-      />
-      <p className="text-sm opacity-70">Jump: Space / ↑ • Duck: ↓</p>
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={CANVAS_W}
+      height={CANVAS_H}
+      className="border mx-auto block"
+    />
   );
 }

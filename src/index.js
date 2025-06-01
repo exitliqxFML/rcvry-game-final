@@ -1,15 +1,14 @@
-// src/index.js
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
-import App from "./App";
+
+import RunnerGame              from "./RunnerGame";
 import WalletConnectionProvider from "./WalletConnectionProvider";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <WalletConnectionProvider>
-      <App />
+      <RunnerGame />
     </WalletConnectionProvider>
   </React.StrictMode>
 );
